@@ -605,8 +605,8 @@ else
 			done
 
 			read -p "设置用户邮箱: " user_email_address
-			until [[ -z ${user_email_address+x} || "$user_email_address" =~ ^([a-zA-Z0-9_\-\.\+]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$ ]]; do
-				read -p "$user_email_address不是一个正确的邮箱格式，请重新设置: " user_email_address
+			until [[ -z ${user_email_address+x} || ${user_email_address} =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]; do
+				read -p "${user_email_address}不是一个正确的邮箱格式，请重新设置: " user_email_address
 			done
 
 			new_client $user_email_address
