@@ -528,7 +528,7 @@ if [ \$script_type = 'client-disconnect' ]; then
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'断开了OpenVPN\",
-                \"text\": \"## '\$common_name'断开了OpenVPN\n> ####    **IP+端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\n> ####    **持续时间**: '\$duration_time'\"
+                \"text\": \"## '\$common_name'断开了OpenVPN\n> ####    **断开时间**:  '\"\$TIME_STAMP\"'\n> ####    **IP + 端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\n> ####    **持续时间**: '\$duration_time'\"
             },
             \"at\": {
                 \"isAtAll\": true
