@@ -482,9 +482,9 @@ Ding_Webhook=\"https://oapi.dingtalk.com/robot/send?access_token=\"\$Ding_Webhoo
 swap_seconds ()
 {
     SEC=\$1
-    (( SEC < 60 )) && echo -e \"\$SEC秒\c\"
-    (( SEC >= 60 && SEC < 3600 )) && echo -e \"\$(( SEC / 60 ))分钟\$(( SEC % 60 ))秒\c\"
-    (( SEC > 3600 )) && echo -e \"\$(( SEC / 3600 ))小时\$(( (SEC % 3600) / 60 ))分钟\$(( (SEC % 3600) % 60 ))秒\c\"
+    [ \"\$SEC\" -le 60 ] && echo \"\$SEC秒\"
+    [ \"\$SEC\" -gt 60 ] && [ \"\$SEC\" -le 3600 ] && echo \"\$(( SEC / 60 ))分钟\$(( SEC % 60 ))秒\"
+    [ \"\$SEC\" -gt 3600 ] && echo \"\$(( SEC / 3600 ))小时\$(( (SEC % 3600) / 60 ))分钟\$(( (SEC % 3600) % 60 ))秒\"
 }
 
 if [ \$script_type = 'user-pass-verify' ] ; then
@@ -512,7 +512,7 @@ if [ \$script_type = 'client-connect' ] ; then
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'连接到了OpenVPN\",
-                \"text\": \"## '\$common_name'连接到了OpenVPN\n> ####    **IP+端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
+                \"text\": \"## '\$common_name'连接到了OpenVPN\n> ####    **连接时间**:  '\"\$TIME_STAMP\"'\n> ####    **IP + 端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
             },
             \"at\": {
                 \"isAtAll\": true
