@@ -479,6 +479,14 @@ LOG_FILE=\"/etc/openvpn/server/openvpn-authorized.log\"
 TIME_STAMP=\`date \"+%Y-%m-%d %T\"\`
 Ding_Webhook_Token=
 Ding_Webhook=\"https://oapi.dingtalk.com/robot/send?access_token=\"\$Ding_Webhook_Token
+swap_seconds ()
+{
+    SEC=\$1
+    (( SEC < 60 )) && echo -e \"\$SEC秒\c\"
+    (( SEC >= 60 && SEC < 3600 )) && echo -e \"\$(( SEC / 60 ))分钟\$(( SEC % 60 ))秒\c\"
+    (( SEC > 3600 )) && echo -e \"\$(( SEC / 3600 ))小时\$(( (SEC % 3600) / 60 ))分钟\$(( (SEC % 3600) % 60 ))秒\c\"
+}
+
 if [ \$script_type = 'user-pass-verify' ] ; then
 	if [ ! -r \"\${PASSFILE}\" ]; then
 		echo \"\${TIME_STAMP}: Could not open password file \"\${PASSFILE}\" for reading.\" >> \${LOG_FILE}
@@ -512,6 +520,7 @@ if [ \$script_type = 'client-connect' ] ; then
         }'
 fi
 if [ \$script_type = 'client-disconnect' ]; then
+	duration_time=\`swap_seconds \$time_duration\`
     curl -s \"\$Ding_Webhook\" \\
         -H 'Content-Type: application/json' \\
         -d '
@@ -519,7 +528,7 @@ if [ \$script_type = 'client-disconnect' ]; then
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'断开了OpenVPN\",
-                \"text\": \"## '\$common_name'断开了OpenVPN\n> ####    **IP+端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
+                \"text\": \"## '\$common_name'断开了OpenVPN\n> ####    **IP+端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\n> ####    **持续时间**: '\$duration_time'\"
             },
             \"at\": {
                 \"isAtAll\": true
