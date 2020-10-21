@@ -18,3 +18,15 @@
 ```bash
 bash ovpnx.sh
 ```
+
+# 客户端连接方法参考
+
+### Linux
+
+```bash
+openvpn --config 客户端配置文件(以.ovpn结尾的文件) --auth-user-pass --daemon
+# 断开连接
+ps -ef |grep openvpn |grep "daemon" |awk '{print $2}' | xargs kill -9
+```
+
+[参考文章](https://gitbook.curiouser.top/origin/openvpn-server.html)
