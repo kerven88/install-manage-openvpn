@@ -76,13 +76,14 @@ setup_smtp_server_profile(){
 	read -p "SMTP服务器地址: " smtp_server_addr
 	read -p "SMTP服务器端口: " smtp_server_port
 	read -p "SMTP服务器用户名: " smtp_server_user
-	read -p "SMTP服务器用户密码: " smtp_server_passwd
+	read -s -p "SMTP服务器用户密码: " smtp_server_passwd
 	{
 	echo "smtp_server_addr=$smtp_server_addr"
 	echo "smtp_server_port=$smtp_server_port"
 	echo "smtp_server_user=$smtp_server_user"
 	echo "smtp_server_passwd=$smtp_server_passwd"
-	} > /etc/openvpn/server/smtp.conf  
+	} > /etc/openvpn/server/smtp.conf
+	echo "[SMTP已配置。如需重新配置请直接修改/etc/openvpn/server/smtp.conf或删除后重新运行该脚本进行配置]"  
 }
 
 
@@ -218,8 +219,10 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
     echo "    2. 增加选择客户端分配IP地址池网段的功能"
     echo "    3. 增加用户名密码验证脚本"
     echo "    4. 增加配置SMTP发送邮件的功能"
-    echo "    5. 增加创建用户后将用户名密码及配置文件等信息通过SMTP邮件服务发送到用户邮箱"
-    echo "    6. 去除不必要的脚本代码"
+	echo "	  5. 增加发送客户端连接、断开状态到钉钉Webhook机器人"
+	echo "	  6. 增加配置简单密码认证管理端口的功能"
+    echo "    7. 增加创建用户后将用户名密码及配置文件等信息通过SMTP邮件服务发送到用户邮箱"
+    echo "    8. 去除不必要的脚本代码"
 	# If system has a single IPv4, it is selected automatically. Else, ask the user
 	if [[ $(ip -4 addr | grep inet | grep -vEc '127(\.[0-9]{1,3}){3}') -eq 1 ]]; then
 		ip=$(ip -4 addr | grep inet | grep -vE '127(\.[0-9]{1,3}){3}' | cut -d '/' -f 1 | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}')
@@ -315,8 +318,8 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 
 	echo "配置OpenVPN服务端监听的端口?"
 	read -p "默认端口[1194]: " port
-	until [[ -z "$port" || "$port" =~ ^[0-9]+$ && "$port" -le 65535 ]]; do
-		echo "$port: invalid port."
+	until [[ -z "$port" || "$port" =~ ^[0-9]+$ && "$port" -le 65535  && "$port" -gt 1024 ]]; do
+		echo "$port 端口无效，请设置1025 <= => 65535范围之内的端口号"
 		read -p "默认端口[1194]: " port
 	done
 	[[ -z "$port" ]] && port="1194"
@@ -331,8 +334,61 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		echo "$dns: 无效的选项."
 		read -p "默认DNS服务器[1]: " dns
 	done
+	
+	echo
 
-	echo "开始安装OpenVPN服务端"
+	read -n1 -p "是否配置管理端口?[Yy/Nn]?" setup_management
+	until [[ -z "$setup_management" || "$setup_management" =~ ^[yYnN]*$ ]]; do
+        echo "$setup_management 为无效的选项"
+		read -p "是否配置管理端口?[Yy/Nn]" setup_management
+	done
+	[[ -z "$setup_management" ]] && setup_management="y"
+
+	case "$setup_management" in
+		y|Y)
+			read -p "设置管理端口[默认27506]:" management_port
+			until [[ -z "$management_port" || ${management_port} =~ ^[0-9]{0,5}$ && $management_port -le 65535 && $management_port -gt 1024 ]]; do
+				echo "$management_port 为无效的端口，请设置1025 <= => 65535范围之内的端口号"
+				read -p "请重新设置管理端口:" management_port
+			done
+			[[ -z "$management_port" ]] && management_port=27506
+			
+			read -p $'设置管理端口登录密码\n[默认6位随机0-9a-zA-Z字符串密码]:' management_psw
+			until [[ -z "$management_psw" || ${management_psw} =~ ^[0-9a-zA-Z]{5,6}$ ]]; do
+				read -s -p "请重新设置更为复杂的密码:" management_psw
+			done
+			[[ -z "$management_psw" ]] && management_psw=`echo $(date +%s)$RANDOM | md5sum | base64 | head -c 6`
+			echo "[密码保存在了/etc/openvpn/server/management-psw-file文件中，更多管理端口的使用方法详见:https://openvpn.net/community-resources/management-interface]"
+			;;
+		n|N)
+			;;
+	esac
+
+	echo
+
+	read -n1 -p "是否配置钉钉通知?[Yy/Nn]?" setup_dingding_notify
+	until [[ -z "$setup_dingding_notify" || "$setup_dingding_notify" =~ ^[yYnN]*$ ]]; do
+        echo "$setup_dingding_notify 为无效的选项"
+		read -p "是否配置钉钉通知?[Yy/Nn]" setup_dingding_notify
+	done
+	[[ -z "$setup_dingding_notify" ]] && setup_dingding_notify="y"
+	echo "[请先创建Webhook类型自定义关键词\"OpenVPN\"的钉钉机器人,详情查看:https://ding-doc.dingtalk.com/doc#/serverapi2/qf2nxq/9e91d73c]"
+	case "$setup_dingding_notify" in
+		y|Y)
+			read -p "设置钉钉机器人通知Webhook的访问Token:" dingding_notify_token
+			until [[ ${dingding_notify_token} && ${dingding_notify_token} =~ ^[0-9a-z]{1,64}$ ]]; do
+				echo "$dingding_notify_token 为无效的钉钉机器人访问Token"
+				read -p "请重新设置钉钉机器人Webhook访问的Token:" dingding_notify_token
+			done
+			echo "[钉钉机器人Webhook访问的Token已配置在了/etc/openvpn/server/openvpn-utils.sh文件中Ding_Webhook_Token变量对应的值，后续如需变动可直接修改]"
+			;;
+		n|N)
+			;;
+	esac
+
+	echo
+
+	echo "开始准备安装OpenVPN服务端"
 	# Install a firewall in the rare case where one is not already available
 	if ! systemctl is-active --quiet firewalld.service && ! hash iptables 2>/dev/null; then
 		if [[ "$os" == "centos" || "$os" == "fedora" ]]; then
@@ -409,7 +465,7 @@ auth SHA512
 tls-crypt tc.key
 topology subnet
 mute 30
-auth-user-pass-verify /etc/openvpn/server/checkpsw.sh via-env
+auth-user-pass-verify openvpn-utils.sh via-env
 username-as-common-name
 script-security 3
 client-config-dir ccd
@@ -417,25 +473,59 @@ ifconfig-pool-persist ipp.txt
 server $server_ip_net 255.255.255.0" > /etc/openvpn/server/server.conf
 	echo "#!/bin/sh
 PASSFILE=\"/etc/openvpn/server/psw-file\"
-LOG_FILE=\"/etc/openvpn/server/openvpn-password.log\"
+LOG_FILE=\"/etc/openvpn/server/openvpn-authorized.log\"
 TIME_STAMP=\`date \"+%Y-%m-%d %T\"\`
-if [ ! -r \"\${PASSFILE}\" ]; then
-  echo \"\${TIME_STAMP}: Could not open password file \"\${PASSFILE}\" for reading.\" >> \${LOG_FILE}
-  exit 1
+Ding_Webhook_Token=
+Ding_Webhook=\"https://oapi.dingtalk.com/robot/send?access_token=\"\$Ding_Webhook_Token
+if [ \$script_type = 'user-pass-verify' ] ; then
+	if [ ! -r \"\${PASSFILE}\" ]; then
+		echo \"\${TIME_STAMP}: Could not open password file \"\${PASSFILE}\" for reading.\" >> \${LOG_FILE}
+		exit 1
+	fi
+	CORRECT_PASSWORD=\`awk '!/^;/&&!/^#/&&\$1==\"'\${username}'\"{print \$2;exit}' \${PASSFILE}\`
+	if [ \"\${CORRECT_PASSWORD}\" = \"\" ]; then
+		echo \"\${TIME_STAMP}: User does not exist: username=\"\${username}\", password=\"\${password}\".\" >> \${LOG_FILE}
+		exit 1
+	fi
+	if [ \"\${password}\" = \"\${CORRECT_PASSWORD}\" ]; then
+		echo \"\${TIME_STAMP}: Successful authentication: username=\"\${username}\".\" >> \${LOG_FILE}
+		exit 0
+	fi
+	echo \"\${TIME_STAMP}: Incorrect password: username=\"\${username}\", password=\"\${password}\".\" >> \${LOG_FILE}
+	exit 1
 fi
-CORRECT_PASSWORD=\`awk '!/^;/&&!/^#/&&\$1==\"'\${username}'\"{print \$2;exit}' \${PASSFILE}\`
-if [ \"\${CORRECT_PASSWORD}\" = \"\" ]; then
-  echo \"\${TIME_STAMP}: User does not exist: username=\"\${username}\", password=\"\${password}\".\" >> \${LOG_FILE}
-  exit 1
+if [ \$script_type = 'client-connect' ] ; then
+	curl -s \"\$Ding_Webhook\" \\
+        -H 'Content-Type: application/json' \\
+        -d '
+        {   
+            \"msgtype\": \"markdown\",
+            \"markdown\": {
+                \"title\": \"'\$common_name'连接到了OpenVPN\",
+                \"text\": \"## '\$common_name'连接到了OpenVPN\n> ####    **IP+端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
+            },
+            \"at\": {
+                \"isAtAll\": true
+            }
+        }'
 fi
-if [ \"\${password}\" = \"\${CORRECT_PASSWORD}\" ]; then
-  echo \"\${TIME_STAMP}: Successful authentication: username=\"\${username}\".\" >> \${LOG_FILE}
-  exit 0
+if [ \$script_type = 'client-disconnect' ]; then
+    curl -s \"\$Ding_Webhook\" \\
+        -H 'Content-Type: application/json' \\
+        -d '
+        {   
+            \"msgtype\": \"markdown\",
+            \"markdown\": {
+                \"title\": \"'\$common_name'断开了OpenVPN\",
+                \"text\": \"## '\$common_name'断开了OpenVPN\n> ####    **IP+端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
+            },
+            \"at\": {
+                \"isAtAll\": true
+            }
+        }'
 fi
-echo \"\${TIME_STAMP}: Incorrect password: username=\"\${username}\", password=\"\${password}\".\" >> \${LOG_FILE}
-exit 1
-" > /etc/openvpn/server/checkpsw.sh
-	chmod +x /etc/openvpn/server/checkpsw.sh
+" > /etc/openvpn/server/openvpn-utils.sh
+	chmod +x /etc/openvpn/server/openvpn-utils.sh
 	# DNS
 	case "$dns" in
 		1|"")
@@ -466,7 +556,7 @@ exit 1
 	esac
 	echo "keepalive 10 120
 cipher AES-256-CBC
-user nobody
+user root
 group $group_name
 persist-key
 persist-tun
@@ -476,6 +566,16 @@ crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 	if [[ "$protocol" = "udp" ]]; then
 		echo "explicit-exit-notify" >> /etc/openvpn/server/server.conf
 	fi
+	if [[ "$setup_management" =~ ^[yY]$ && ${management_port} ]] ;then
+		echo $management_psw > /etc/openvpn/server/management-psw-file
+		echo "management $ip $management_port management-psw-file" >> /etc/openvpn/server/server.conf
+	fi 
+	if [[ "$setup_dingding_notify" =~ ^[yY]$ && ${dingding_notify_token} ]] ;then
+		sed -i '/Ding_Webhook_Token=/c Ding_Webhook_Token='${dingding_notify_token}'' /etc/openvpn/server/openvpn-utils.sh
+		echo "client-connect openvpn-utils.sh" >> /etc/openvpn/server/server.conf
+		echo "client-disconnect openvpn-utils.sh" >> /etc/openvpn/server/server.conf
+	fi 
+	
 	# Enable net.ipv4.ip_forward for the system
 	echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/30-openvpn-forward.conf
 	# Enable without waiting for a reboot or service restart
@@ -685,7 +785,7 @@ else
 					semanage port -d -t openvpn_port_t -p "$protocol" "$port"
 				fi
 				systemctl disable --now openvpn-server@server.service 2> /dev/null
-				rm -rf /etc/openvpn/server
+				rm -rf /etc/openvpn
 				rm -f /etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf
 				rm -f /etc/sysctl.d/30-openvpn-forward.conf
 				if [[ "$os" = "debian" || "$os" = "ubuntu" ]]; then
