@@ -83,6 +83,7 @@ setup_smtp_server_profile(){
 	echo "smtp_server_user=$smtp_server_user"
 	echo "smtp_server_passwd=$smtp_server_passwd"
 	} > /etc/openvpn/server/smtp.conf
+	echo
 	echo "[SMTP已配置。如需重新配置请直接修改/etc/openvpn/server/smtp.conf或删除后重新运行该脚本进行配置]"  
 }
 
