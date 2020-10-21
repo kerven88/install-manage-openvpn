@@ -372,6 +372,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		read -p "是否配置钉钉通知?[Yy/Nn]" setup_dingding_notify
 	done
 	[[ -z "$setup_dingding_notify" ]] && setup_dingding_notify="y"
+	echo
 	echo "[请先创建Webhook类型自定义关键词\"OpenVPN\"的钉钉机器人,详情查看:https://ding-doc.dingtalk.com/doc#/serverapi2/qf2nxq/9e91d73c]"
 	case "$setup_dingding_notify" in
 		y|Y)
