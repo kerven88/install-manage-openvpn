@@ -213,6 +213,13 @@ new_client () {
 	fi
 }
 
+mask2cdr () {
+  local x=${1##*255.}
+  set -- 0^^^128^192^224^240^248^252^254^ $(( (${#1} - ${#x})*2 )) ${x%%.*}
+  x=${1%%$3*}
+  echo $(( $2 + (${#x}/4) ))
+}
+
 if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	clear
 	echo 'OpenVPN安装管理脚本(根据https://github.com/Nyr/openvpn-install进行的优化), 以下为优化的功能:'
@@ -220,10 +227,11 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
     echo "    2. 增加选择客户端分配IP地址池网段的功能"
     echo "    3. 增加用户名密码验证脚本"
     echo "    4. 增加配置SMTP发送邮件的功能"
-	echo "	  5. 增加发送客户端连接、断开状态到钉钉Webhook机器人"
-	echo "	  6. 增加配置简单密码认证管理端口的功能"
+	echo "    5. 增加发送客户端连接、断开状态到钉钉Webhook机器人"
+	echo "    6. 增加配置简单密码认证管理端口的功能"
     echo "    7. 增加创建用户后将用户名密码及配置文件等信息通过SMTP邮件服务发送到用户邮箱"
-    echo "    8. 去除不必要的脚本代码"
+	echo "    8. 增加安装时控制是否允许客户端之间进行网络互联，是否允许客户端访问服务端所在的网络"
+    echo "    9. 去除不必要的脚本代码"
 	# If system has a single IPv4, it is selected automatically. Else, ask the user
 	if [[ $(ip -4 addr | grep inet | grep -vEc '127(\.[0-9]{1,3}){3}') -eq 1 ]]; then
 		ip=$(ip -4 addr | grep inet | grep -vE '127(\.[0-9]{1,3}){3}' | cut -d '/' -f 1 | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}')
@@ -240,6 +248,30 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		[[ -z "$ip_number" ]] && ip_number="1"
 		ip=$(ip -4 addr | grep inet | grep -vE '127(\.[0-9]{1,3}){3}' | cut -d '/' -f 1 | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}' | sed -n "$ip_number"p)
 	fi
+
+	server_ip_local_netmask=$(ifconfig wlan0|grep -w 'inet'|awk -F'[ :]+' '{print $5}')
+	
+	server_ip_local_net_cdr=$(mask2cdr $server_ip_local_netmask)
+
+	case "$server_ip_local_net_cdr" in
+		8 )
+		server_ip_local_net=$(echo $ip | awk -F'.' '{print $1".0.0.0"}')
+		server_ip_local_net_with_cdr=$(echo $server_ip_local_net"/8")
+		;;
+		16 )
+		server_ip_local_net=$(echo $ip | awk -F'.' '{print $1"."$2".0.0"}')
+		server_ip_local_net_with_cdr=$(echo $server_ip_local_net"/16")
+		;;
+		24 )
+		server_ip_local_net=$(echo $ip | awk -F'.' '{print $1"."$2"."$3".0"}')
+		server_ip_local_net_with_cdr=$(echo $server_ip_local_net"/24")
+		;;
+		32 )
+		server_ip_local_net=$(echo $ip | awk -F'.' '{print $1"."$2"."$3"."$4}')
+		server_ip_local_net_with_cdr=$(echo $server_ip_local_net"/32")
+		;;
+	esac
+
 	# # If $ip is a private IP address, the server must be behind NAT
 	# if echo "$ip" | grep -qE '^(10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.|192\.168)'; then
 	# 	echo
@@ -272,7 +304,9 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		[[ -z "$ip6_number" ]] && ip6_number="1"
 		ip6=$(ip -6 addr | grep 'inet6 [23]' | cut -d '/' -f 1 | grep -oE '([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}' | sed -n "$ip6_number"p)
 	fi
+
 	echo
+
 	echo "配置OpenVPN使用的通信协议?"
 	echo "   1) UDP (推荐)"
 	echo "   2) TCP"
@@ -289,6 +323,8 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		protocol=tcp
 		;;
 	esac
+
+	echo
 
     echo "配置OpenVPN客户端IP地址池网段"
 	echo "   1) 10.8.1.0"
@@ -317,6 +353,8 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		;;
 	esac
 
+	echo
+
 	echo "配置OpenVPN服务端监听的端口?"
 	read -p "默认端口[1194]: " port
 	until [[ -z "$port" || "$port" =~ ^[0-9]+$ && "$port" -le 65535  && "$port" -gt 1024 ]]; do
@@ -324,24 +362,58 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		read -p "默认端口[1194]: " port
 	done
 	[[ -z "$port" ]] && port="1194"
+
 	echo
-	echo "配置推送给客户端使用的DNS服务器"
-	echo "   1) 114 DNS"
-	echo "   2) 阿里云DNS"
-	echo "   3) 谷歌DNS"
-	echo "   4) 当前系统配置的DNS"
-	read -p "默认DNS服务器[1]: " dns
-	until [[ -z "$dns" || "$dns" =~ ^[1-4]$ ]]; do
-		echo "$dns: 无效的选项."
-		read -p "默认DNS服务器[1]: " dns
+
+	read -p "是否在客户端配置文件中设置NAT的公网IP地址或域名[Yy/Nn]?" setup_client_profile_nat_pub_ip_domain
+	until [[ -z "$setup_client_profile_nat_pub_ip_domain" || "$setup_client_profile_nat_pub_ip_domain" =~ ^[yYnN]*$ ]]; do
+		read -p "$setup_client_profile_nat_pub_ip_domain为无效的选项,是否在客户端配置文件中设置NAT的公网IP地址或域名[Yy/Nn]?" setup_client_profile_nat_pub_ip_domain
 	done
+	[[ -z "$setup_client_profile_nat_pub_ip_domain" ]] && setup_client_profile_nat_pub_ip_domain="y"
+	case "$setup_client_profile_nat_pub_ip_domain" in
+		y|Y )
+			read -p "设置NAT的公网IP地址或域名:" client_profile_nat_pub_ip_domain
+			until [[ -z "$client_profile_nat_pub_ip_domain" && ${client_profile_nat_pub_ip_domain} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.0$  || ${client_profile_nat_pub_ip_domain} =~ ^[a-zA-Z\.]*$ ]]; do
+				read -p "$client_profile_nat_pub_ip_domain为无效的IP地址与域名，请重新设置NAT的公网IP地址或域名:" client_profile_nat_pub_ip_domain
+			done
+		;;
+		n|N )
+		;;
+	esac
+
+	# echo "配置推送给客户端使用的DNS服务器"
+	# echo "   1) 114 DNS"
+	# echo "   2) 阿里云DNS"
+	# echo "   3) 谷歌DNS"
+	# echo "   4) 当前系统配置的DNS"
+	# read -p "默认DNS服务器[1]: " dns
+	# until [[ -z "$dns" || "$dns" =~ ^[1-4]$ ]]; do
+	# 	echo "$dns: 无效的选项."
+	# 	read -p "默认DNS服务器[1]: " dns
+	# done
 	
+	echo
+
+	read -n1 -p "是否允许客户端间通过互联[Yy/Nn]?" setup_client_conn
+	until [[ -z "$setup_client_conn" || "$setup_client_conn" =~ ^[yYnN]*$ ]]; do
+		read -p "$setup_client_conn为无效的选项,是否允许客户端间互联[Yy/Nn]?" setup_client_conn
+	done
+	[[ -z "$setup_client_conn" ]] && setup_client_conn="y"
+
+	echo
+
+	
+	read -n1 -p "是否允许客户端访问服务端所在网段[Yy/Nn]?" setup_client_conn_server_net
+	until [[ -z "$setup_client_conn_server_net" || "$setup_client_conn_server_net" =~ ^[yYnN]*$ ]]; do
+		read -p "$setup_client_conn_server_net为无效的选项,是否允许客户端访问服务端所在网段[Yy/Nn]?" setup_client_conn_server_net
+	done
+	[[ -z "$setup_client_conn_server_net" ]] && setup_client_conn_server_net="y"
+
 	echo
 
 	read -n1 -p "是否配置管理端口?[Yy/Nn]?" setup_management
 	until [[ -z "$setup_management" || "$setup_management" =~ ^[yYnN]*$ ]]; do
-        echo "$setup_management 为无效的选项"
-		read -p "是否配置管理端口?[Yy/Nn]" setup_management
+		read -p "$setup_management为无效的选项，是否配置管理端口?[Yy/Nn]" setup_management
 	done
 	[[ -z "$setup_management" ]] && setup_management="y"
 
@@ -349,8 +421,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		y|Y)
 			read -p "设置管理端口[默认27506]:" management_port
 			until [[ -z "$management_port" || ${management_port} =~ ^[0-9]{0,5}$ && $management_port -le 65535 && $management_port -gt 1024 ]]; do
-				echo "$management_port 为无效的端口，请设置1025 <= => 65535范围之内的端口号"
-				read -p "请重新设置管理端口:" management_port
+				read -p "$management_port为无效的端口，请重新设置1025 <= => 65535之内的端口:" management_port
 			done
 			[[ -z "$management_port" ]] && management_port=27506
 			
@@ -373,7 +444,9 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		read -p "是否配置钉钉通知?[Yy/Nn]" setup_dingding_notify
 	done
 	[[ -z "$setup_dingding_notify" ]] && setup_dingding_notify="y"
+
 	echo
+
 	echo "[请先创建Webhook类型自定义关键词\"OpenVPN\"的钉钉机器人,详情查看:https://ding-doc.dingtalk.com/doc#/serverapi2/qf2nxq/9e91d73c]"
 	case "$setup_dingding_notify" in
 		y|Y)
@@ -538,33 +611,33 @@ fi
 " > /etc/openvpn/server/openvpn-utils.sh
 	chmod +x /etc/openvpn/server/openvpn-utils.sh
 	# DNS
-	case "$dns" in
-		1|"")
-            echo 'push "dhcp-option DNS 114.114.114.110"' >> /etc/openvpn/server/server.conf
-			echo 'push "dhcp-option DNS 114.114.115.110"' >> /etc/openvpn/server/server.conf
-		;;
-		2)
-            echo 'push "dhcp-option DNS 223.6.6.6"' >> /etc/openvpn/server/server.conf
-			echo 'push "dhcp-option DNS 223.5.5.5"' >> /etc/openvpn/server/server.conf
-		;;
-		3)
-			echo 'push "dhcp-option DNS 8.8.8.8"' >> /etc/openvpn/server/server.conf
-			echo 'push "dhcp-option DNS 8.8.4.4"' >> /etc/openvpn/server/server.conf
-		;;
-		4)
-			# Locate the proper resolv.conf
-			# Needed for systems running systemd-resolved
-			if grep -q '^nameserver 127.0.0.53' "/etc/resolv.conf"; then
-				resolv_conf="/run/systemd/resolve/resolv.conf"
-			else
-				resolv_conf="/etc/resolv.conf"
-			fi
-			# Obtain the resolvers from resolv.conf and use them for OpenVPN
-			grep -v '^#\|^;' "$resolv_conf" | grep '^nameserver' | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}' | while read line; do
-				echo "push \"dhcp-option DNS $line\"" >> /etc/openvpn/server/server.conf
-			done
-		;;
-	esac
+	# case "$dns" in
+	# 	1|"")
+    #         echo 'push "dhcp-option DNS 114.114.114.110"' >> /etc/openvpn/server/server.conf
+	# 		echo 'push "dhcp-option DNS 114.114.115.110"' >> /etc/openvpn/server/server.conf
+	# 	;;
+	# 	2)
+    #         echo 'push "dhcp-option DNS 223.6.6.6"' >> /etc/openvpn/server/server.conf
+	# 		echo 'push "dhcp-option DNS 223.5.5.5"' >> /etc/openvpn/server/server.conf
+	# 	;;
+	# 	3)
+	# 		echo 'push "dhcp-option DNS 8.8.8.8"' >> /etc/openvpn/server/server.conf
+	# 		echo 'push "dhcp-option DNS 8.8.4.4"' >> /etc/openvpn/server/server.conf
+	# 	;;
+	# 	4)
+	# 		# Locate the proper resolv.conf
+	# 		# Needed for systems running systemd-resolved
+	# 		if grep -q '^nameserver 127.0.0.53' "/etc/resolv.conf"; then
+	# 			resolv_conf="/run/systemd/resolve/resolv.conf"
+	# 		else
+	# 			resolv_conf="/etc/resolv.conf"
+	# 		fi
+	# 		# Obtain the resolvers from resolv.conf and use them for OpenVPN
+	# 		grep -v '^#\|^;' "$resolv_conf" | grep '^nameserver' | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}' | while read line; do
+	# 			echo "push \"dhcp-option DNS $line\"" >> /etc/openvpn/server/server.conf
+	# 		done
+	# 	;;
+	# esac
 	echo "keepalive 10 120
 cipher AES-256-CBC
 user root
@@ -576,6 +649,14 @@ verb 3
 crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 	if [[ "$protocol" = "udp" ]]; then
 		echo "explicit-exit-notify" >> /etc/openvpn/server/server.conf
+	fi
+
+	if [[ "$setup_client_conn_server_net" =~ ^[yY]$ ]] ;then
+		echo "push \"route $server_ip_local_net $server_ip_local_netmask vpn_gateway\"" >> /etc/openvpn/server/server.conf
+	fi
+
+	if [[ "$setup_client_conn" =~ ^[yY]$ ]] ;then
+		echo "client-to-client" >> /etc/openvpn/server/server.conf
 	fi
 	if [[ "$setup_management" =~ ^[yY]$ && ${management_port} ]] ;then
 		echo $management_psw > /etc/openvpn/server/management-psw-file
@@ -629,14 +710,17 @@ crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 Before=network.target
 [Service]
 Type=oneshot
-ExecStart=$iptables_path -t nat -A POSTROUTING -s $server_ip_net/24 ! -d $server_ip_net/24 -j SNAT --to $ip
 ExecStart=$iptables_path -I INPUT -p $protocol --dport $port -j ACCEPT
 ExecStart=$iptables_path -I FORWARD -s $server_ip_net/24 -j ACCEPT
 ExecStart=$iptables_path -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-ExecStop=$iptables_path -t nat -D POSTROUTING -s $server_ip_net/24 ! -d $server_ip_net/24 -j SNAT --to $ip
 ExecStop=$iptables_path -D INPUT -p $protocol --dport $port -j ACCEPT
 ExecStop=$iptables_path -D FORWARD -s $server_ip_net/24 -j ACCEPT
 ExecStop=$iptables_path -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" > /etc/systemd/system/openvpn-iptables.service
+
+		if [[ "$setup_client_conn_server_net" =~ ^[yY]$ ]] ;then
+			echo "ExecStart=$iptables_path -t nat -A POSTROUTING -s $server_ip_net/24 -d $server_ip_local_net_with_cdr -j SNAT --to $ip" >> /etc/systemd/system/openvpn-iptables.service
+			echo "ExecStop=$iptables_path -t nat -D POSTROUTING -s $server_ip_net/24 -d $server_ip_local_net_with_cdr -j SNAT --to $ip"  >> /etc/systemd/system/openvpn-iptables.service
+		fi
 # 		if [[ -n "$ip6" ]]; then
 # 			echo "ExecStart=$ip6tables_path -t nat -A POSTROUTING -s fddd:1194:1194:1194::/64 ! -d fddd:1194:1194:1194::/64 -j SNAT --to $ip6
 # ExecStart=$ip6tables_path -I FORWARD -s fddd:1194:1194:1194::/64 -j ACCEPT
@@ -665,7 +749,7 @@ WantedBy=multi-user.target" >> /etc/systemd/system/openvpn-iptables.service
 		semanage port -a -t openvpn_port_t -p "$protocol" "$port"
 	fi
 	# If the server is behind NAT, use the correct IP address
-	[[ -n "$public_ip" ]] && ip="$public_ip"
+	[[ -n "$client_profile_nat_pub_ip_domain" ]] && ip="$client_profile_nat_pub_ip_domain"
 	# client-common.txt is created so we have a template to add further users later
 	echo "client
 dev tun
