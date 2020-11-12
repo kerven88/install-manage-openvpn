@@ -577,6 +577,34 @@ if [ \$script_type = 'user-pass-verify' ] ; then
 	echo \"\${TIME_STAMP}: Incorrect password: username=\"\${username}\", password=\"\${password}\".\" >> \${LOG_FILE}
 	exit 1
 fi
+
+case  \"\$IV_PLAT\" in
+  os )
+    device_type=ios
+  ;;
+  win )
+    device_type=Windows
+  ;;
+  linux )
+    device_type=Linux
+  ;;
+  solaris )
+    device_type=Solaris
+  ;;
+  openbsd )
+    device_type=OpenBSD
+  ;;
+  mac )
+    device_type=Mac
+  ;;
+  netbsd )
+    device_type=NetBSD
+  ;;
+  freebsd )
+    device_type=FreeBSD
+  ;;
+esac
+
 if [ \$script_type = 'client-connect' ] ; then
 	curl -s \"\$Ding_Webhook\" \\
         -H 'Content-Type: application/json' \\
@@ -585,7 +613,7 @@ if [ \$script_type = 'client-connect' ] ; then
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'连接到了OpenVPN\",
-                \"text\": \"## '\$common_name'连接到了OpenVPN\n> ####    **连接时间**:  '\"\$TIME_STAMP\"'\n> ####    **IP + 端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
+                \"text\": \"## '\$common_name'连接到了OpenVPN\n> ###    **客户端**:  '\"\$device_type\"'\n> ####    **连接时间**:  '\"\$TIME_STAMP\"'\n> ####    **IP + 端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\"
             },
             \"at\": {
                 \"isAtAll\": true
@@ -601,7 +629,7 @@ if [ \$script_type = 'client-disconnect' ]; then
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'断开了OpenVPN\",
-                \"text\": \"## '\$common_name'断开了OpenVPN\n> ####    **断开时间**:  '\"\$TIME_STAMP\"'\n> ####    **IP + 端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\n> ####    **持续时间**: '\$duration_time'\"
+                \"text\": \"## '\$common_name'断开了OpenVPN\n> ###    **客户端**:  '\"\$device_type\"'\n> ####    **断开时间**:  '\"\$TIME_STAMP\"'\n> ####    **IP + 端口**:  '\$trusted_ip':'\$trusted_port'\n> ####    **端对端IP**:  '\$ifconfig_pool_remote_ip' <===> '\$ifconfig_local'\n> ####    **持续时间**: '\$duration_time'\"
             },
             \"at\": {
                 \"isAtAll\": true
