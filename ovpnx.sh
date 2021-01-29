@@ -528,7 +528,7 @@ YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
 ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
 -----END DH PARAMETERS-----' > /etc/openvpn/server/dh.pem
 	# Generate server.conf
-	echo "local $ip
+	echo "local 0.0.0.0
 port $port
 proto $protocol
 dev tun
@@ -688,7 +688,7 @@ crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 	fi
 	if [[ "$setup_management" =~ ^[yY]$ && ${management_port} ]] ;then
 		echo $management_psw > /etc/openvpn/server/management-psw-file
-		echo "management $ip $management_port management-psw-file" >> /etc/openvpn/server/server.conf
+		echo "management 127.0.0.1 $management_port management-psw-file" >> /etc/openvpn/server/server.conf
 	fi 
 	if [[ "$setup_dingding_notify" =~ ^[yY]$ && ${dingding_notify_token} ]] ;then
 		sed -i '/Ding_Webhook_Token=/c Ding_Webhook_Token='${dingding_notify_token}'' /etc/openvpn/server/openvpn-utils.sh
