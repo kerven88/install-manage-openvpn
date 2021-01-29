@@ -84,7 +84,7 @@ setup_smtp_server_profile(){
 	echo "smtp_server_passwd=$smtp_server_passwd"
 	} > /etc/openvpn/server/smtp.conf
 	echo
-	echo "[SMTP已配置。如需重新配置请直接修改/etc/openvpn/server/smtp.conf或删除后重新运行该脚本进行配置]"  
+	echo "[SMTP已配置。如需重新配置请直接修改/etc/openvpn/server/smtp.conf或删除后重新运行该脚本进行配置]"
 }
 
 
@@ -107,7 +107,7 @@ check_smtp_server_profile (){
 }
 
 send_email () {
-    check_smtp_server_profile 
+    check_smtp_server_profile
     if [ $? -eq 0 ];then
         echo "FROM: $smtp_server_user
 To: $2 <$1>
@@ -250,7 +250,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	fi
 
 	server_ip_local_netmask=$(ifconfig wlan0|grep -w 'inet'|awk -F'[ :]+' '{print $5}')
-	
+
 	server_ip_local_net_cdr=$(mask2cdr $server_ip_local_netmask)
 
 	case "$server_ip_local_net_cdr" in
@@ -391,7 +391,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	# 	echo "$dns: 无效的选项."
 	# 	read -p "默认DNS服务器[1]: " dns
 	# done
-	
+
 	echo
 
 	read -n1 -p "是否允许客户端间通过互联[Yy/Nn]?" setup_client_conn
@@ -402,7 +402,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 
 	echo
 
-	
+
 	read -n1 -p "是否允许客户端访问服务端所在网段[Yy/Nn]?" setup_client_conn_server_net
 	until [[ -z "$setup_client_conn_server_net" || "$setup_client_conn_server_net" =~ ^[yYnN]*$ ]]; do
 		read -p "$setup_client_conn_server_net为无效的选项,是否允许客户端访问服务端所在网段[Yy/Nn]?" setup_client_conn_server_net
@@ -424,7 +424,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 				read -p "$management_port为无效的端口，请重新设置1025 <= => 65535之内的端口:" management_port
 			done
 			[[ -z "$management_port" ]] && management_port=27506
-			
+
 			read -p $'设置管理端口登录密码\n[默认6位随机0-9a-zA-Z字符串密码]:' management_psw
 			until [[ -z "$management_psw" || ${management_psw} =~ ^[0-9a-zA-Z]{5,6}$ ]]; do
 				read -s -p "请重新设置更为复杂的密码:" management_psw
@@ -609,7 +609,7 @@ if [ \$script_type = 'client-connect' ] ; then
 	curl -s \"\$Ding_Webhook\" \\
         -H 'Content-Type: application/json' \\
         -d '
-        {   
+        {
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'连接到了OpenVPN\",
@@ -625,7 +625,7 @@ if [ \$script_type = 'client-disconnect' ]; then
     curl -s \"\$Ding_Webhook\" \\
         -H 'Content-Type: application/json' \\
         -d '
-        {   
+        {
             \"msgtype\": \"markdown\",
             \"markdown\": {
                 \"title\": \"'\$common_name'断开了OpenVPN\",
@@ -689,13 +689,13 @@ crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 	if [[ "$setup_management" =~ ^[yY]$ && ${management_port} ]] ;then
 		echo $management_psw > /etc/openvpn/server/management-psw-file
 		echo "management 127.0.0.1 $management_port management-psw-file" >> /etc/openvpn/server/server.conf
-	fi 
+	fi
 	if [[ "$setup_dingding_notify" =~ ^[yY]$ && ${dingding_notify_token} ]] ;then
 		sed -i '/Ding_Webhook_Token=/c Ding_Webhook_Token='${dingding_notify_token}'' /etc/openvpn/server/openvpn-utils.sh
 		echo "client-connect openvpn-utils.sh" >> /etc/openvpn/server/server.conf
 		echo "client-disconnect openvpn-utils.sh" >> /etc/openvpn/server/server.conf
-	fi 
-	
+	fi
+
 	# Enable net.ipv4.ip_forward for the system
 	echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/30-openvpn-forward.conf
 	# Enable without waiting for a reboot or service restart
@@ -818,7 +818,7 @@ else
 		read -p "$option为无效的选项，请重新输入选项: " option
 	done
 	case "$option" in
-        0) 
+        0)
             check_smtp_server_profile
         ;;
 		1)
