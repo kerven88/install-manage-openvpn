@@ -1,6 +1,6 @@
 # OpenVPN安装管理脚本
 
-## 根据https://github.com/Nyr/openvpn-install进行的功能优化
+## 根据 https://github.com/Nyr/openvpn-install 进行的功能优化
 
 1. 汉化
 2. 增加选择客户端分配IP地址池网段的功能
