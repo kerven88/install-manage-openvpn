@@ -19,67 +19,67 @@ fi
 
 check_command() {
 	if ! command -v ifconfig >/dev/null 2>&1; then
-		echo -e "\033[31mcurl命令不存在\033[0m"
+		echo -e "\033[31mifconfig命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y net-tools
+			apt install -y net-tools >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y net-tools
+			yum install -y net-tools >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y net-tools
+			dnf install -y net-tools >/dev/null 2>&1
 		fi
 	elif ! command -v ip >/dev/null 2>&1; then
 		echo -e "\033[31mip命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y iproute2
+			apt install -y iproute2 >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y iproute2
+			yum install -y iproute2 >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y iproute2
+			dnf install -y iproute2 >/dev/null 2>&1
 		fi
 	elif ! command -v curl >/dev/null 2>&1; then
 		echo -e "\033[31mcurl命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y curl
+			apt install -y curl >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y curl
+			yum install -y curl >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y curl
+			dnf install -y curl >/dev/null 2>&1
 		fi
 	elif ! command -v wget >/dev/null 2>&1; then
 		echo -e "\033[31mawk命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y wget
+			apt install -y wget >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y wget
+			yum install -y wget >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y wget
+			dnf install -y wget >/dev/null 2>&1
 		fi
 	elif ! command -v tail >/dev/null 2>&1; then
 		echo -e "\033[31mcoreutils命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y coreutils
+			apt install -y coreutils >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y coreutils
+			yum install -y coreutils >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y coreutils
+			dnf install -y coreutils >/dev/null 2>&1
 		fi
 	elif ! command -v sed >/dev/null 2>&1; then
 		echo -e "\033[31msed命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y sed
+			apt install -y sed >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y sed
+			yum install -y sed >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y sed
+			dnf install -y sed >/dev/null 2>&1
 		fi
 	elif ! command -v grep >/dev/null 2>&1; then
 		echo -e "\033[31mgrep命令不存在\033[0m"
 		if os="ubuntu"; then
-			apt install -y grep
+			apt install -y grep >/dev/null 2>&1
 		elif os="centos"; then
-			yum install -y grep
+			yum install -y grep >/dev/null 2>&1
 		elif os="fedora"; then
-			dnf install -y grep
+			dnf install -y grep >/dev/null 2>&1
 		fi
 	fi
 }
@@ -133,7 +133,7 @@ if [[ "$EUID" -ne 0 ]]; then
 	exit
 fi
 
-if [[ ! -e /dev/net/tun ]] || ! (exec 7<>/dev/net/tun) 2>/dev/null; then
+if [[ ! -e /dev/net/tun ]] || ! (exec 7<>/dev/net/tun) >/dev/null 2>&1; then
 	echo "The system does not have the TUN device available.
 TUN needs to be enabled before running this installer."
 	exit
@@ -547,36 +547,36 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	read -n1 -r -p "按任意键继续"
 	# If running inside a container, disable LimitNPROC to prevent conflicts
 	if systemd-detect-virt -cq; then
-		mkdir /etc/systemd/system/openvpn-server@server.service.d/ 2>/dev/null
+		mkdir /etc/systemd/system/openvpn-server@server.service.d/ >/dev/null 2>&1
 		echo "[Service]
 LimitNPROC=infinity" >/etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf
 	fi
 	if [[ "$os" = "debian" || "$os" = "ubuntu" ]]; then
-		apt-get update
-		apt-get install -y openvpn openssl ca-certificates $firewall
+		apt-get update >/dev/null 2>&1
+		apt-get install -y openvpn openssl ca-certificates $firewall >/dev/null 2>&1
 	elif [[ "$os" = "centos" ]]; then
-		yum install -y epel-release
-		yum install -y openvpn openssl ca-certificates tar $firewall
+		yum install -y epel-release >/dev/null 2>&1
+		yum install -y openvpn openssl ca-certificates tar $firewall >/dev/null 2>&1
 	else
 		# Else, OS must be Fedora
-		dnf install -y openvpn openssl ca-certificates tar $firewall
+		dnf install -y openvpn openssl ca-certificates tar $firewall >/dev/null 2>&1
 	fi
 	# If firewalld was just installed, enable it
 	if [[ "$firewall" == "firewalld" ]]; then
-		systemctl enable --now firewalld.service 2>/dev/null
+		systemctl enable --now firewalld.service >/dev/null 2>&1
 	fi
 	# Get easy-rsa
 	easy_rsa_url='https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.7/EasyRSA-3.0.7.tgz'
-	mkdir -p /etc/openvpn/server/easy-rsa/ /etc/openvpn/server/ccd
+	mkdir -p c /etc/openvpn/server/ccd
 	{ wget -qO- "$easy_rsa_url" 2>/dev/null || curl -sL "$easy_rsa_url"; } | tar xz -C /etc/openvpn/server/easy-rsa/ --strip-components 1
 	chown -R root:root /etc/openvpn/server
 	cd /etc/openvpn/server/easy-rsa/
 	# Create the PKI, set up the CA and the server and client certificates
-	./easyrsa init-pki 2>/dev/null
-	./easyrsa --batch build-ca nopass 2>/dev/null
-	EASYRSA_CERT_EXPIRE=3650 ./easyrsa build-server-full server nopass 2>/dev/null
+	./easyrsa init-pki >/dev/null 2>&1
+	./easyrsa --batch build-ca nopass >/dev/null 2>&1
+	EASYRSA_CERT_EXPIRE=3650 ./easyrsa build-server-full server nopass >/dev/null 2>&1
 	# EASYRSA_CERT_EXPIRE=3650 ./easyrsa build-client-full "$client" nopass
-	EASYRSA_CRL_DAYS=3650 ./easyrsa gen-crl 2>/dev/null
+	EASYRSA_CRL_DAYS=3650 ./easyrsa gen-crl >/dev/null 2>&1
 	# Move the stuff we need
 	cp pki/ca.crt pki/private/ca.key pki/issued/server.crt pki/private/server.key pki/crl.pem /etc/openvpn/server
 	# CRL is read with each client connection, while OpenVPN is dropped to nobody
@@ -584,7 +584,7 @@ LimitNPROC=infinity" >/etc/systemd/system/openvpn-server@server.service.d/disabl
 	# Without +x in the directory, OpenVPN can't run a stat() on the CRL file
 	chmod o+x /etc/openvpn/server/
 	# Generate key for tls-crypt
-	openvpn --genkey --secret /etc/openvpn/server/tc.key 2>/dev/null
+	openvpn --genkey --secret /etc/openvpn/server/tc.key >/dev/null 2>&1
 	# Create the DH parameters file using the predefined ffdhe2048 group
 	echo '-----BEGIN DH PARAMETERS-----
 MIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
@@ -801,7 +801,7 @@ crl-verify crl.pem" >>/etc/openvpn/server/server.conf
 		ip6tables_path=$(command -v ip6tables)
 		# nf_tables is not available as standard in OVZ kernels. So use iptables-legacy
 		# if we are in OVZ, with a nf_tables backend and iptables-legacy is available.
-		if [[ $(systemd-detect-virt) == "openvz" ]] && readlink -f "$(command -v iptables)" | grep -q "nft" && hash iptables-legacy 2>/dev/null; then
+		if [[ $(systemd-detect-virt) == "openvz" ]] && readlink -f "$(command -v iptables)" | grep -q "nft" && hash iptables-legacy >/dev/null 2>&1; then
 			iptables_path=$(command -v iptables-legacy)
 			ip6tables_path=$(command -v ip6tables-legacy)
 		fi
@@ -831,7 +831,7 @@ ExecStop=$iptables_path -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEP
 		echo "RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target" >>/etc/systemd/system/openvpn-iptables.service
-		systemctl enable --now openvpn-iptables.service 2>/dev/null
+		systemctl enable --now openvpn-iptables.service >/dev/null 2>&1
 	fi
 	# If SELinux is enabled and a custom port was selected, we need this
 	if sestatus 2>/dev/null | grep "Current mode" | grep -q "enforcing" && [[ "$port" != 1194 ]]; then
@@ -839,10 +839,10 @@ WantedBy=multi-user.target" >>/etc/systemd/system/openvpn-iptables.service
 		if ! hash semanage 2>/dev/null; then
 			if [[ "$os_version" -eq 7 ]]; then
 				# Centos 7
-				yum install -y policycoreutils-python
+				yum install -y policycoreutils-python >/dev/null 2>&1
 			else
 				# CentOS 8 or Fedora
-				dnf install -y policycoreutils-python-utils
+				dnf install -y policycoreutils-python-utils >/dev/null 2>&1
 			fi
 		fi
 		semanage port -a -t openvpn_port_t -p "$protocol" "$port"
@@ -866,7 +866,7 @@ block-outside-dns
 verb 3
 auth-user-pass" >/etc/openvpn/server/client-common.txt
 	# Enable and start the OpenVPN service
-	systemctl enable --now openvpn-server@server.service 2>/dev/null
+	systemctl enable --now openvpn-server@server.service >/dev/null 2>&1
 	# Generates the custom client.ovpn
 	# new_client $user_email_address
 	echo "##################################################"
@@ -931,8 +931,8 @@ else
 		done
 		if [[ "$revoke" =~ ^[yY]$ ]]; then
 			cd /etc/openvpn/server/easy-rsa/
-			./easyrsa --batch revoke "$client" 2>/dev/null
-			EASYRSA_CRL_DAYS=3650 ./easyrsa gen-crl 2>/dev/null
+			./easyrsa --batch revoke "$client" >/dev/null 2>&1
+			EASYRSA_CRL_DAYS=3650 ./easyrsa gen-crl >/dev/null 2>&1
 			rm -f /etc/openvpn/server/crl.pem
 			cp /etc/openvpn/server/easy-rsa/pki/crl.pem /etc/openvpn/server/crl.pem
 			# CRL is read with each client connection, when OpenVPN is dropped to nobody
@@ -972,13 +972,13 @@ else
 				# 	firewall-cmd --permanent --direct --remove-rule ipv6 nat POSTROUTING 0 -s fddd:1194:1194:1194::/64 ! -d fddd:1194:1194:1194::/64 -j SNAT --to "$ip6"
 				# fi
 			else
-				systemctl disable --now openvpn-iptables.service 2>/dev/null
+				systemctl disable --now openvpn-iptables.service >/dev/null 2>&1
 				rm -f /etc/systemd/system/openvpn-iptables.service
 			fi
 			if sestatus 2>/dev/null | grep "Current mode" | grep -q "enforcing" && [[ "$port" != 1194 ]]; then
 				semanage port -d -t openvpn_port_t -p "$protocol" "$port"
 			fi
-			systemctl disable --now openvpn-server@server.service 2>/dev/null
+			systemctl disable --now openvpn-server@server.service >/dev/null 2>&1
 			rm -rf /etc/openvpn
 			rm -f /etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf
 			rm -f /etc/sysctl.d/30-openvpn-forward.conf
