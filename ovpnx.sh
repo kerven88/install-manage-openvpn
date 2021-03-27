@@ -377,7 +377,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	echo "配置OpenVPN使用的通信协议?"
 	echo "   1) TCP (推荐)"
 	echo "   2) UDP"
-	read -p "默认协议[2]: " protocol
+	read -p "默认协议[1]: " protocol
 	until [[ -z "$protocol" || "$protocol" =~ ^[12]$ ]]; do
 		echo "$protocol: 无效的选项."
 		read -p "Protocol [1]: " protocol
