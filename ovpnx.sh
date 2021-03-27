@@ -17,6 +17,73 @@ if [[ $(uname -r | cut -d "." -f 1) -eq 2 ]]; then
 	exit
 fi
 
+check_command() {
+	if ! command -v ifconfig >/dev/null 2>&1; then
+		echo -e "\033[31mcurl命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y net-tools
+		elif os="centos"; then
+			yum install -y net-tools
+		elif os="fedora"; then
+			dnf install -y net-tools
+		fi
+	elif ! command -v ip >/dev/null 2>&1; then
+		echo -e "\033[31mip命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y iproute2
+		elif os="centos"; then
+			yum install -y iproute2
+		elif os="fedora"; then
+			dnf install -y iproute2
+		fi
+	elif ! command -v curl >/dev/null 2>&1; then
+		echo -e "\033[31mcurl命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y curl
+		elif os="centos"; then
+			yum install -y curl
+		elif os="fedora"; then
+			dnf install -y curl
+		fi
+	elif ! command -v wget >/dev/null 2>&1; then
+		echo -e "\033[31mawk命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y wget
+		elif os="centos"; then
+			yum install -y wget
+		elif os="fedora"; then
+			dnf install -y wget
+		fi
+	elif ! command -v tail >/dev/null 2>&1; then
+		echo -e "\033[31mcoreutils命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y coreutils
+		elif os="centos"; then
+			yum install -y coreutils
+		elif os="fedora"; then
+			dnf install -y coreutils
+		fi
+	elif ! command -v sed >/dev/null 2>&1; then
+		echo -e "\033[31msed命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y sed
+		elif os="centos"; then
+			yum install -y sed
+		elif os="fedora"; then
+			dnf install -y sed
+		fi
+	elif ! command -v grep >/dev/null 2>&1; then
+		echo -e "\033[31mgrep命令不存在\033[0m"
+		if os="ubuntu"; then
+			apt install -y grep
+		elif os="centos"; then
+			yum install -y grep
+		elif os="fedora"; then
+			dnf install -y grep
+		fi
+	fi
+}
+
 # Detect OS
 # $os_version variables aren't always in use, but are kept here for convenience
 if grep -qs "ubuntu" /etc/os-release; then
@@ -220,6 +287,7 @@ mask2cdr() {
 }
 
 if [[ ! -e /etc/openvpn/server/server.conf ]]; then
+	check_command
 	clear
 	echo 'OpenVPN安装管理脚本(根据https://github.com/Nyr/openvpn-install进行的优化), 以下为优化的功能:'
 	echo "    1. 汉化"
@@ -248,7 +316,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 		ip=$(ip -4 addr | grep inet | grep -vE '127(\.[0-9]{1,3}){3}' | cut -d '/' -f 1 | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}' | sed -n "$ip_number"p)
 	fi
 
-	server_ip_local_netmask=$(ifconfig wlan0 | grep -w 'inet' | awk -F'[ :]+' '{print $5}')
+	server_ip_local_netmask=$(ifconfig eth0 | grep -w 'inet' | awk -F'[ :]+' '{print $5}')
 
 	server_ip_local_net_cdr=$(mask2cdr $server_ip_local_netmask)
 
@@ -544,6 +612,7 @@ username-as-common-name
 script-security 3
 client-config-dir ccd
 ifconfig-pool-persist ipp.txt
+log-append openvpn-server.log
 server $server_ip_net 255.255.255.0" >/etc/openvpn/server/server.conf
 	echo "#!/bin/sh
 PASSFILE=\"/etc/openvpn/server/psw-file\"
@@ -601,6 +670,9 @@ case  \"\$IV_PLAT\" in
   ;;
   freebsd )
     device_type=FreeBSD
+  ;;
+  * )
+    device_type=None
   ;;
 esac
 
