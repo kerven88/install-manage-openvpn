@@ -547,7 +547,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	read -n1 -r -p "按任意键继续"
 	# If running inside a container, disable LimitNPROC to prevent conflicts
 	if systemd-detect-virt -cq; then
-		mkdir /etc/systemd/system/openvpn-server@server.service.d/ >/dev/null 2>&1
+		mkdir /etc/systemd/system/openvpn-server@server.service.d/ 2>/dev/nul
 		echo "[Service]
 LimitNPROC=infinity" >/etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf
 	fi
@@ -567,7 +567,7 @@ LimitNPROC=infinity" >/etc/systemd/system/openvpn-server@server.service.d/disabl
 	fi
 	# Get easy-rsa
 	easy_rsa_url='https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.7/EasyRSA-3.0.7.tgz'
-	mkdir -p c /etc/openvpn/server/ccd
+	mkdir -p /etc/openvpn/server/ccd
 	{ wget -qO- "$easy_rsa_url" 2>/dev/null || curl -sL "$easy_rsa_url"; } | tar xz -C /etc/openvpn/server/easy-rsa/ --strip-components 1
 	chown -R root:root /etc/openvpn/server
 	cd /etc/openvpn/server/easy-rsa/
@@ -801,7 +801,7 @@ crl-verify crl.pem" >>/etc/openvpn/server/server.conf
 		ip6tables_path=$(command -v ip6tables)
 		# nf_tables is not available as standard in OVZ kernels. So use iptables-legacy
 		# if we are in OVZ, with a nf_tables backend and iptables-legacy is available.
-		if [[ $(systemd-detect-virt) == "openvz" ]] && readlink -f "$(command -v iptables)" | grep -q "nft" && hash iptables-legacy >/dev/null 2>&1; then
+		if [[ $(systemd-detect-virt) == "openvz" ]] && readlink -f "$(command -v iptables)" | grep -q "nft" && hash iptables-legacy 2>/dev/null; then
 			iptables_path=$(command -v iptables-legacy)
 			ip6tables_path=$(command -v ip6tables-legacy)
 		fi
