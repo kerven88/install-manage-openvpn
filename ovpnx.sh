@@ -19,7 +19,7 @@ fi
 
 check_command() {
 	if ! command -v ifconfig >/dev/null 2>&1; then
-		echo -e "\033[31mifconfig命令不存在\033[0m"
+		echo -e "\033[31mifconfig命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y net-tools >/dev/null 2>&1
 		elif os="centos"; then
@@ -28,7 +28,7 @@ check_command() {
 			dnf install -y net-tools >/dev/null 2>&1
 		fi
 	elif ! command -v ip >/dev/null 2>&1; then
-		echo -e "\033[31mip命令不存在\033[0m"
+		echo -e "\033[31mip命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y iproute2 >/dev/null 2>&1
 		elif os="centos"; then
@@ -37,7 +37,7 @@ check_command() {
 			dnf install -y iproute2 >/dev/null 2>&1
 		fi
 	elif ! command -v curl >/dev/null 2>&1; then
-		echo -e "\033[31mcurl命令不存在\033[0m"
+		echo -e "\033[31mcurl命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y curl >/dev/null 2>&1
 		elif os="centos"; then
@@ -46,7 +46,7 @@ check_command() {
 			dnf install -y curl >/dev/null 2>&1
 		fi
 	elif ! command -v wget >/dev/null 2>&1; then
-		echo -e "\033[31mawk命令不存在\033[0m"
+		echo -e "\033[31mawk命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y wget >/dev/null 2>&1
 		elif os="centos"; then
@@ -55,7 +55,7 @@ check_command() {
 			dnf install -y wget >/dev/null 2>&1
 		fi
 	elif ! command -v tail >/dev/null 2>&1; then
-		echo -e "\033[31mcoreutils命令不存在\033[0m"
+		echo -e "\033[31mcoreutils命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y coreutils >/dev/null 2>&1
 		elif os="centos"; then
@@ -64,7 +64,7 @@ check_command() {
 			dnf install -y coreutils >/dev/null 2>&1
 		fi
 	elif ! command -v sed >/dev/null 2>&1; then
-		echo -e "\033[31msed命令不存在\033[0m"
+		echo -e "\033[31msed命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y sed >/dev/null 2>&1
 		elif os="centos"; then
@@ -73,7 +73,7 @@ check_command() {
 			dnf install -y sed >/dev/null 2>&1
 		fi
 	elif ! command -v grep >/dev/null 2>&1; then
-		echo -e "\033[31mgrep命令不存在\033[0m"
+		echo -e "\033[31mgrep命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y grep >/dev/null 2>&1
 		elif os="centos"; then
