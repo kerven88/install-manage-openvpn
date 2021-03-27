@@ -532,6 +532,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 
 	echo "开始准备安装OpenVPN服务端"
 	# Install a firewall in the rare case where one is not already available
+	echo "  检查防火墙软件"
 	if ! systemctl is-active --quiet firewalld.service && ! hash iptables 2>/dev/null; then
 		if [[ "$os" == "centos" || "$os" == "fedora" ]]; then
 			firewall="firewalld"
@@ -552,26 +553,32 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 LimitNPROC=infinity" >/etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf
 	fi
 	if [[ "$os" = "debian" || "$os" = "ubuntu" ]]; then
+		echo "  正在下载安装OpenVPN软件"
 		apt-get update >/dev/null 2>&1
 		apt-get install -y openvpn openssl ca-certificates $firewall >/dev/null 2>&1
 	elif [[ "$os" = "centos" ]]; then
+		echo "  正在下载安装OpenVPN软件"
 		yum install -y epel-release >/dev/null 2>&1
 		yum install -y openvpn openssl ca-certificates tar $firewall >/dev/null 2>&1
 	else
 		# Else, OS must be Fedora
+		echo "  正在下载安装OpenVPN软件"
 		dnf install -y openvpn openssl ca-certificates tar $firewall >/dev/null 2>&1
 	fi
 	# If firewalld was just installed, enable it
 	if [[ "$firewall" == "firewalld" ]]; then
+		echo "  开启防火墙"
 		systemctl enable --now firewalld.service >/dev/null 2>&1
 	fi
 	# Get easy-rsa
 	easy_rsa_url='https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.7/EasyRSA-3.0.7.tgz'
-	mkdir -p /etc/openvpn/server/ccd
-	{ wget -qO- "$easy_rsa_url" 2>/dev/null || curl -sL "$easy_rsa_url"; } | tar xz -C /etc/openvpn/server/easy-rsa/ --strip-components 1
+	mkdir -p /etc/openvpn/server/easy-rsa/ /etc/openvpn/server/ccd
+	echo "  下载easy-rsa证书工具"
+	{ wget -qO- "$easy_rsa_url" 2>/dev/null || curl -# -sL "$easy_rsa_url"; } | tar xz -C /etc/openvpn/server/easy-rsa/ --strip-components 1
 	chown -R root:root /etc/openvpn/server
 	cd /etc/openvpn/server/easy-rsa/
 	# Create the PKI, set up the CA and the server and client certificates
+	echo "  正在创建CA和客户端证书"
 	./easyrsa init-pki >/dev/null 2>&1
 	./easyrsa --batch build-ca nopass >/dev/null 2>&1
 	EASYRSA_CERT_EXPIRE=3650 ./easyrsa build-server-full server nopass >/dev/null 2>&1
@@ -595,6 +602,7 @@ YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
 ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
 -----END DH PARAMETERS-----' >/etc/openvpn/server/dh.pem
 	# Generate server.conf
+	echo "  生成OpenVPN服务端配置文件"
 	echo "local 0.0.0.0
 port $port
 proto $protocol
@@ -614,6 +622,7 @@ client-config-dir ccd
 ifconfig-pool-persist ipp.txt
 log-append openvpn-server.log
 server $server_ip_net 255.255.255.0" >/etc/openvpn/server/server.conf
+	echo "  生成OpenVPN服务端脚本"
 	echo "#!/bin/sh
 PASSFILE=\"/etc/openvpn/server/psw-file\"
 LOG_FILE=\"/etc/openvpn/server/openvpn-authorized.log\"
@@ -770,10 +779,11 @@ crl-verify crl.pem" >>/etc/openvpn/server/server.conf
 	# Enable net.ipv4.ip_forward for the system
 	echo 'net.ipv4.ip_forward=1' >/etc/sysctl.d/30-openvpn-forward.conf
 	# Enable without waiting for a reboot or service restart
+	echo "  开起内核路由转发功能"
 	echo 1 >/proc/sys/net/ipv4/ip_forward
 	if [[ -n "$ip6" ]]; then
 		# Enable net.ipv6.conf.all.forwarding for the system
-		echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.d/30-openvpn-forward.conf
+		echo "net.ipv6.conf.all.forwarding=1" >/etc/sysctl.d/30-openvpn-forward.conf
 		# Enable without waiting for a reboot or service restart
 		echo 1 >/proc/sys/net/ipv6/conf/all/forwarding
 	fi
@@ -805,6 +815,7 @@ crl-verify crl.pem" >>/etc/openvpn/server/server.conf
 			iptables_path=$(command -v iptables-legacy)
 			ip6tables_path=$(command -v ip6tables-legacy)
 		fi
+		echo "  生成OpenVPN的iptables规则"
 		echo "[Unit]
 Before=network.target
 [Service]
@@ -831,6 +842,7 @@ ExecStop=$iptables_path -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEP
 		echo "RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target" >>/etc/systemd/system/openvpn-iptables.service
+		echo "  生效OpenVPN的iptables规则"
 		systemctl enable --now openvpn-iptables.service >/dev/null 2>&1
 	fi
 	# If SELinux is enabled and a custom port was selected, we need this
@@ -850,6 +862,7 @@ WantedBy=multi-user.target" >>/etc/systemd/system/openvpn-iptables.service
 	# If the server is behind NAT, use the correct IP address
 	[[ -n "$client_profile_nat_pub_ip_domain" ]] && ip="$client_profile_nat_pub_ip_domain"
 	# client-common.txt is created so we have a template to add further users later
+	echo "  生成通用客户端配置文件"
 	echo "client
 dev tun
 proto $protocol
@@ -866,6 +879,7 @@ block-outside-dns
 verb 3
 auth-user-pass" >/etc/openvpn/server/client-common.txt
 	# Enable and start the OpenVPN service
+	echo "  启动OpenVPN服务并设置开机自启"
 	systemctl enable --now openvpn-server@server.service >/dev/null 2>&1
 	# Generates the custom client.ovpn
 	# new_client $user_email_address
@@ -979,9 +993,7 @@ else
 				semanage port -d -t openvpn_port_t -p "$protocol" "$port"
 			fi
 			systemctl disable --now openvpn-server@server.service >/dev/null 2>&1
-			rm -rf /etc/openvpn
-			rm -f /etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf
-			rm -f /etc/sysctl.d/30-openvpn-forward.conf
+			rm -rf /etc/openvpn /etc/systemd/system/openvpn-server@server.service.d/disable-limitnproc.conf /etc/sysctl.d/30-openvpn-forward.conf
 			if [[ "$os" = "debian" || "$os" = "ubuntu" ]]; then
 				apt-get remove --purge -y openvpn
 			else
