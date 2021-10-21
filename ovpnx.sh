@@ -134,8 +134,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 if [[ ! -e /dev/net/tun ]] || ! (exec 7<>/dev/net/tun) >/dev/null 2>&1; then
-	echo "The system does not have the TUN device available.
-TUN needs to be enabled before running this installer."
+	echo "The system does not have the TUN device available. Tun needs to be enabled before running this installer."
 	exit
 fi
 
@@ -760,7 +759,7 @@ crl-verify crl.pem" >>/etc/openvpn/server/server.conf
 	fi
 
 	if [[ "$setup_client_conn_server_net" =~ ^[yY]$ ]]; then
-		echo "push \"route $server_ip_local_net $server_ip_local_netmask vpn_gateway\"" >>/etc/openvpn/server/server.conf
+		echo "push \"route $server_ip_local_net $server_ip_local_netmask\"" >>/etc/openvpn/server/server.conf
 	fi
 
 	if [[ "$setup_client_conn" =~ ^[yY]$ ]]; then
