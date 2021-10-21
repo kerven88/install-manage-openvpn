@@ -439,7 +439,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 	case "$setup_client_profile_nat_pub_ip_domain" in
 	y | Y)
 		read -p "设置NAT的公网IP地址或域名: " client_profile_nat_pub_ip_domain
-		until [[ -z "$client_profile_nat_pub_ip_domain" && ${client_profile_nat_pub_ip_domain} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.0$ || ${client_profile_nat_pub_ip_domain} =~ ^[a-zA-Z\.]*$ ]]; do
+		until [[ ! -z "$client_profile_nat_pub_ip_domain" && "$client_profile_nat_pub_ip_domain" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ || "$client_profile_nat_pub_ip_domain" =~ ^[a-zA-Z\.]*$ ]]; do
 			read -p "$client_profile_nat_pub_ip_domain为无效的IP地址与域名，请重新设置NAT的公网IP地址或域名: " client_profile_nat_pub_ip_domain
 		done
 		;;
@@ -460,7 +460,7 @@ if [[ ! -e /etc/openvpn/server/server.conf ]]; then
 
 	echo
 
-	read -n1 -p "是否允许客户端间通过互联[Yy/Nn]? " setup_client_conn
+	read -n1 -p "是否允许客户端间互联[Yy/Nn]? " setup_client_conn
 	until [[ -z "$setup_client_conn" || "$setup_client_conn" =~ ^[yYnN]*$ ]]; do
 		read -p "$setup_client_conn为无效的选项,是否允许客户端间互联[Yy/Nn]? " setup_client_conn
 	done
