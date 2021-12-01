@@ -18,7 +18,8 @@ if [[ $(uname -r | cut -d "." -f 1) -eq 2 ]]; then
 fi
 
 check_command() {
-	if ! command -v ifconfig >/dev/null 2>&1; then
+	set -x
+	if command -v ifconfig >/dev/null 2>&1; then
 		echo -e "\033[31mifconfig命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y net-tools >/dev/null 2>&1
@@ -27,7 +28,8 @@ check_command() {
 		elif os="fedora"; then
 			dnf install -y net-tools >/dev/null 2>&1
 		fi
-	elif ! command -v ip >/dev/null 2>&1; then
+	fi
+	if command -v ip >/dev/null 2>&1; then
 		echo -e "\033[31mip命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y iproute2 >/dev/null 2>&1
@@ -36,7 +38,8 @@ check_command() {
 		elif os="fedora"; then
 			dnf install -y iproute2 >/dev/null 2>&1
 		fi
-	elif ! command -v curl >/dev/null 2>&1; then
+	fi
+	if command -v curl >/dev/null 2>&1; then
 		echo -e "\033[31mcurl命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y curl >/dev/null 2>&1
@@ -45,7 +48,8 @@ check_command() {
 		elif os="fedora"; then
 			dnf install -y curl >/dev/null 2>&1
 		fi
-	elif ! command -v wget >/dev/null 2>&1; then
+	fi
+	if command -v wget >/dev/null 2>&1; then
 		echo -e "\033[31mawk命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y wget >/dev/null 2>&1
@@ -54,7 +58,8 @@ check_command() {
 		elif os="fedora"; then
 			dnf install -y wget >/dev/null 2>&1
 		fi
-	elif ! command -v tail >/dev/null 2>&1; then
+	fi
+	if command -v tail >/dev/null 2>&1; then
 		echo -e "\033[31mcoreutils命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y coreutils >/dev/null 2>&1
@@ -63,7 +68,8 @@ check_command() {
 		elif os="fedora"; then
 			dnf install -y coreutils >/dev/null 2>&1
 		fi
-	elif ! command -v sed >/dev/null 2>&1; then
+	fi
+	if command -v sed >/dev/null 2>&1; then
 		echo -e "\033[31msed命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y sed >/dev/null 2>&1
@@ -72,7 +78,8 @@ check_command() {
 		elif os="fedora"; then
 			dnf install -y sed >/dev/null 2>&1
 		fi
-	elif ! command -v grep >/dev/null 2>&1; then
+	fi
+	if command -v grep >/dev/null 2>&1; then
 		echo -e "\033[31mgrep命令不存在，正在下载安装！\033[0m"
 		if os="ubuntu"; then
 			apt install -y grep >/dev/null 2>&1
@@ -140,7 +147,31 @@ fi
 
 setup_smtp_server_profile() {
 	read -p "SMTP服务器地址: " smtp_server_addr
-	read -p "SMTP服务器端口: " smtp_server_port
+
+	read -p "SMTP服务器是否使用SSL/TLS安全连接？[Yy/Nn] " setup_smtp_server_tls_ssl
+	until [[ -z "$setup_smtp_server_tls_ssl" || "$setup_smtp_server_tls_ssl" =~ ^[yYnN]*$ ]]; do
+		read -p "$setup_smtp_server_tls_ssl为无效的选项,SMTP服务器是否使用SSL/TLS连接？[Yy/Nn] " setup_client_profile_nat_pub_ip_domain
+	done
+	if [[ $setup_smtp_server_tls_ssl =~ ^[nN] ]]; then
+		read -p "SMTP服务器端口: " smtp_server_port
+		if [[ $smtp_server_port == 25 ]]; then
+			smtp_url="smtp://$smtp_server_addr:$smtp_server_port"
+		else
+			echo "$smtp_server_port 是非常见SMTP服务商的普通端口，请和SMTP服务商确认。"
+			exit
+		fi
+	elif [[ $setup_smtp_server_tls_ssl =~ ^[yY] ]]; then
+		read -p "SMTP服务器安全端口: " smtp_server_security_port
+		normal_smtp_security_port=("465 587")
+		if [[ $smtp_server_security_port =~ ${normal_smtp_security_port[*]} ]]; then
+			smtp_url="smtps://$smtp_server_addr:$smtp_server_security_port"
+		else
+			echo "$smtp_server_security_port 是非常见SMTP服务商的安全端口，请和SMTP服务商确认。"
+			exit
+		fi
+
+	fi
+
 	read -p "SMTP服务器用户名: " smtp_server_user
 	read -s -p "SMTP服务器用户密码: " smtp_server_passwd
 	{
@@ -233,7 +264,7 @@ Content-Disposition: attachment; filename=\"$2.ovpn\"
 
 		response=$(
 			curl -s --ssl-reqd --write-out %{http_code} --output /dev/null \
-				--url "smtp://$smtp_server_addr:$smtp_server_port" \
+				--url "$smtp_url" \
 				--user "$smtp_server_user:$smtp_server_passwd" \
 				--mail-from "$smtp_server_user" \
 				--mail-rcpt $1 \
@@ -241,6 +272,7 @@ Content-Disposition: attachment; filename=\"$2.ovpn\"
 		)
 		if [ $response -eq 250 ]; then
 			echo "新用户配置等信息已通过SMTP服务发送至用户邮箱，请提醒用户及时查收！"
+			rm -rf /tmp/emai-data.txt
 		else
 			echo "新用户配置等信息通过SMTP服务无法发送至用户邮箱，SMTP服务返回状态码：$response 。请根据SMTP服务状态码检查SMTP服务配置！"
 		fi
